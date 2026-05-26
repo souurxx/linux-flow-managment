@@ -10,7 +10,7 @@ Linux-style window management for Windows. Keyboard-driven focus, virtual deskto
 - *Virtual desktops* — instant switch with Alt+1/2/3, move windows silently
 - *Snap** — half-screen left/right on any monitor
 - *Maximize/restore* — single hotkey toggle
-- *Alt+Tab safe* — focus-follows-mouse suppressed while Alt is held
+- *Alt+Tab safe* — focus-follows-mouse suppressed while Alt is held{{{ this ability {{while alt is held }}}is changed and is no more in the updated verison but would add it if anyone ever use and want it xd
 
 # Requirements
 
