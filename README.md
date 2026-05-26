@@ -25,16 +25,18 @@ irm https://github.com/souurxx/linux-flow-mangment/raw/main/setup.ps1 | iex
 ```
 
 This will:
-- Download `master.exe` and `VirtualDesktopAccessor.dll`
+- Download `master.exe` and the correct `VirtualDesktopAccessor.dll` for your Windows version
 - Install AltSnap (for easy window dragging with Alt+drag)
 - Set both to launch on startup
 - Launch everything immediately
 
 ## Manual Install
 
-1. Download `master.exe` and `VirtualDesktopAccessor.dll` from this repo
-2. Put both files in the same folder
-3. Run `master.exe`
+1. Download `master.exe` from this repo
+2. **Windows 10:** download `VirtualDesktopAccessor.dll` from this repo
+3. **Windows 11:** download `VirtualDesktopAccessor_Win11.dll` from this repo and rename it to `VirtualDesktopAccessor.dll`
+4. Put both files in the same folder
+5. Run `master.exe`
 
 ## Hotkeys
 
