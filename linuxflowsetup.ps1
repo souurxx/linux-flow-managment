@@ -30,7 +30,7 @@ if ($winBuild -lt 22000) {
     curl.exe -L "https://github.com/souurxx/linux-flow-mangment/raw/main/VirtualDesktopAccessor.dll" -o "$installDir\VirtualDesktopAccessor.dll"
 } else {
     # Windows 11
-    curl.exe -L "https://github.com/Ciantic/VirtualDesktopAccessor/releases/latest/download/VirtualDesktopAccessor.dll" -o "$installDir\VirtualDesktopAccessor.dll"
+    curl.exe -L "https://github.com/souurxx/linux-flow-mangment/raw/main/VirtualDesktopAccessor_Win11.dll" -o "$installDir\VirtualDesktopAccessor.dll"
 }
 Write-Host "      DLL saved." -ForegroundColor Green
 
@@ -76,3 +76,4 @@ Write-Host "══════════════════════�
 Write-Host "   All done! Everything is running." -ForegroundColor Green
 Write-Host "═══════════════════════════════════════════" -ForegroundColor Green
 Write-Host ""
+
