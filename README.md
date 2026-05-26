@@ -2,16 +2,16 @@
 
 Linux-style window management for Windows. Keyboard-driven focus, virtual desktops, snap, and spawn-under-mouse — all without leaving Windows.
 
-## Features
+# Features
 
-- **Focus follows mouse** — hover over a window to focus it, no click needed
-- **Spawn under mouse** — new windows appear centered on your cursor
-- **Virtual desktops** — instant switch with Alt+1/2/3, move windows silently
-- **Snap** — half-screen left/right on any monitor
-- **Maximize/restore** — single hotkey toggle
-- **Alt+Tab safe** — focus-follows-mouse suppressed while Alt is held
+- *Focus follows mouse* — hover over a window to focus it, no click needed
+- *Spawn under mouse* — new windows appear centered on your cursor
+- *Virtual desktops* — instant switch with Alt+1/2/3, move windows silently
+- *Snap** — half-screen left/right on any monitor
+- *Maximize/restore* — single hotkey toggle
+- *Alt+Tab safe* — focus-follows-mouse suppressed while Alt is held
 
-## Requirements
+# Requirements
 
 - Windows 10 or 11
 - Run as Administrator (the exe will prompt automatically)
@@ -26,11 +26,11 @@ irm https://github.com/souurxx/linux-flow-mangment/raw/main/setup.ps1 | iex
 
 This will:
 - Download `master.exe` and the correct `VirtualDesktopAccessor.dll` for your Windows version
-- Install AltSnap (for easy window dragging with Alt+drag)
+- Install AltSnap (for easy window dragging and resizing
 - Set both to launch on startup
 - Launch everything immediately
 
-## Manual Install
+# Manual Install
 
 1. Download `master.exe` from this repo
 2. **Windows 10:** download `VirtualDesktopAccessor.dll` from this repo
@@ -47,13 +47,13 @@ This will:
 | Alt+A | Move window to desktop 1 (stay put) |
 | Alt+D | Move window to desktop 2 (stay put) |
 | Alt+F | Move window to desktop 3 (stay put) |
-| Alt+W | Maximize → Fake fullscreen → Restore |
+| Alt+W | for each press as follow = Maximize → Fake fullscreen → Restore |
 | Alt+Q | Snap left |
 | Alt+E | Snap right |
 | Alt+Z | Close window |
 | Alt+C | Minimize window |
 | Alt+S | Open Firefox |
-| Alt+X | Open Explorer |
+| Alt+X | Open file Explorer |
 | Alt+N | Open Notepad |
 | Alt+Enter | Open Terminal |
 | Alt+Space | Open Brave (new window) |
