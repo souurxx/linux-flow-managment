@@ -2,6 +2,7 @@
 
 Linux-style window management for Windows. Keyboard-driven focus, virtual desktops, snap, and spawn-under-mouse — all without leaving Windows.
 
+
 # Features
 
 - *Focus follows mouse* — hover over a window to focus it, no click needed
@@ -15,6 +16,8 @@ Linux-style window management for Windows. Keyboard-driven focus, virtual deskto
 
 - Windows 10 or 11
 - Run as Administrator (the exe will prompt automatically)
+
+IMPORTANT (((((create virual desktops yourself by simply pressing windows key+tap then new desktop, the script support up to 4, you cant switch between desktops if you don't do create them first )))))))
 
 ## One-click Install
 
