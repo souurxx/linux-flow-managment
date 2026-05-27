@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0
 #SingleInstance Force
 Persistent
 
@@ -131,8 +131,6 @@ FocusFollowsMouse() {
     static lastX := 0
     static lastY := 0
 
-    if GetKeyState("Alt", "P")
-        return
 
     if (A_TickCount - AltTabCooldown < 400)
         return
@@ -237,8 +235,7 @@ IsIgnoredUtilityProcess(processName) {
              "StartMenuExperienceHost.exe",
              "SearchHost.exe",
              "ShellExperienceHost.exe",
-             "TextInputHost.exe",
-             "steamwebhelper.exe":
+             "TextInputHost.exe":
             return true
     }
     return false
@@ -588,7 +585,24 @@ SnapRight() {
 !Enter:: Run "wt.exe"
 
 !Space:: {
-    bravePath := "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
+    bravePaths := [
+        "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+        "C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe",
+        EnvGet("LOCALAPPDATA") "\BraveSoftware\Brave-Browser\Application\brave.exe"
+    ]
+
+    bravePath := ""
+    for p in bravePaths {
+        if FileExist(p) {
+            bravePath := p
+            break
+        }
+    }
+
+    if !bravePath {
+        MsgBox "Could not find Brave. Please install it."
+        return
+    }
 
     if WinExist("ahk_exe brave.exe") {
         WinActivate("ahk_exe brave.exe")
@@ -597,10 +611,7 @@ SnapRight() {
         return
     }
 
-    if FileExist(bravePath)
-        Run 'explorer.exe "' bravePath '"'
-    else
-        MsgBox "Could not find Brave at:`n" bravePath
+    Run bravePath
 }
 
 ; ── Window management ─────────────────────────────────────────────────
