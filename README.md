@@ -24,7 +24,7 @@ IMPORTANT (((((create virual desktops yourself by simply pressing windows key+ta
 Open PowerShell as Administrator and run:
 
 ```powershell
-irm https://github.com/souurxx/linux-flow-mangment/raw/main/setup.ps1 | iex
+irm https://github.com/souurxx/linux-flow-mangment/raw/main/linuxflowsetup.ps1 | iex
 ```
 
 This will:
