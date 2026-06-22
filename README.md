@@ -1,4 +1,4 @@
-# wm — Windows Manager
+# queen — Windows Manager
 
 Linux-style window management for Windows. Keyboard-driven focus, virtual desktops, snap, and spawn-under-mouse — written in native C, no runtime required.
 
@@ -13,7 +13,7 @@ Linux-style window management for Windows. Keyboard-driven focus, virtual deskto
 - **Virtual desktops** — switch instantly with Alt+1/2/3, move windows silently to any desktop
 - **Snap** — half-screen left/right on any monitor with proper DWM frame compensation
 - **Maximize / fake fullscreen** — separate hotkeys, both with clean restore
-- **Smart z-order** — maximized and fullscreen windows are managed to never bury floating utilities, while third-party overlays (media viewers, video players) are left alone
+- **Smart z-order** — maximized and fullscreen windows are managed to never bury floating utilities, while third-party overlays are left alone
 - **Config file** — `wm.ini` next to the exe, auto-created on first run. Add/remove ignored processes and window classes without recompiling
 - **Log file** — `wm.log` next to the exe with timestamps. Rotates automatically at 2MB
 - **Tray icon** — right-click to view log or exit. No Task Manager needed
@@ -25,59 +25,97 @@ Linux-style window management for Windows. Keyboard-driven focus, virtual deskto
 
 - Windows 10 or 11
 - Run as Administrator (the exe prompts automatically via UAC)
-- `VirtualDesktopAccessor.dll` placed next to `wm.exe` for virtual desktop hotkeys (Alt+1/2/3/4/A/D/F). Without it the app still runs — those hotkeys are just disabled
+- `VirtualDesktopAccessor.dll` placed next to `queen.exe` for virtual desktop hotkeys (Alt+1/2/3/4/A/D/F). Without it the app still runs — those hotkeys are just disabled
 
 ---
 
 ## Installation
 
-fast one clickcopy this to your terminal :irm https://raw.githubusercontent.com/souurxx/linux-flow-managment/main/wmsetup.ps1 | iex
+### ⚡ Quick Install (Recommended)
 
-manual 
+Installs `queen.exe`, `VirtualDesktopAccessor.dll`, and `AltSnap` to `Documents\linux-flow-managment\`. Creates the folder automatically if it doesn't exist.
 
-1. Download `wm.exe` and the correct DLL for your Windows version:
+Open PowerShell and run:
+
+```powershell
+irm https://raw.githubusercontent.com/souurxx/linux-flow-managment/main/wmsetup.ps1 | iex
+```
+
+What the installer does:
+- Creates `Documents\linux-flow-managment\` if it doesn't exist
+- Downloads `queen.exe` into that folder
+- Detects your Windows version and downloads the correct `VirtualDesktopAccessor.dll` (renames it automatically)
+- Downloads and installs AltSnap (recommended companion for drag-to-resize)
+- Optionally adds `queen.exe` to startup
+
+### 🛠 Manual Install
+
+1. Create the folder `Documents\linux-flow-managment\` (or any folder you prefer)
+2. Download `queen.exe` and the correct DLL for your Windows version:
    - **Windows 10:** `VirtualDesktopAccessor.dll`
    - **Windows 11:** `VirtualDesktopAccessorwin11.dll` — rename it to `VirtualDesktopAccessor.dll`
-2. Put both files in the same folder
-3. Run `wm.exe` — UAC will prompt, accept it
-4. The tray icon confirms it's running
+3. Place both files in the same folder
+4. Run `queen.exe` — UAC will prompt, accept it
+5. The tray icon confirms it's running
 
-To launch on startup: press `Win+R`, type `shell:startup`, press Enter, and drop a shortcut to `wm.exe` in that folder.
+**To launch on startup:** press `Win+R`, type `shell:startup`, press Enter, and drop a shortcut to `queen.exe` in that folder.
 
 > **Virtual desktops:** create them yourself first via `Win+Tab → New Desktop`. The app supports up to 4. You can't switch to a desktop that doesn't exist yet.
 
 ---
 
+## AutoHotkey Version (Legacy)
+
+The original `master.ahk` script is still available for users who prefer AutoHotkey or want the extended tiling/scripting features.
+
+### Requirements
+
+- [AutoHotkey v2](https://www.autohotkey.com/) installed
+- `VirtualDesktopAccessor.dll` placed in the same folder as `master.ahk`
+
+### Install
+
+1. Install AutoHotkey v2 from [autohotkey.com](https://www.autohotkey.com/)
+2. Download `master.ahk` and `VirtualDesktopAccessor.dll` into the same folder
+3. Double-click `master.ahk` to run it
+4. A tray icon confirms it's running
+
+**To launch on startup:** press `Win+R`, type `shell:startup`, press Enter, and drop a shortcut to `master.ahk` in that folder.
+
+> The AHK version includes additional features like AutoTile (dwindle tiling layout), focus history, and per-desktop tiling state — at the cost of requiring the AHK v2 runtime.
+
+---
+
 ## Hotkeys
 
-| Hotkey | Action |
-|---|---|
-| `Alt+1` / `2` / `3` | Switch to virtual desktop 1 / 2 / 3 |
-| `Alt+4` | Move focused window to desktop 4 and switch there |
-| `Alt+A` | Move focused window to desktop 1 (stay on current desktop) |
-| `Alt+D` | Move focused window to desktop 2 (stay on current desktop) |
-| `Alt+F` | Move focused window to desktop 3 (stay on current desktop) |
-| `Alt+W` | Toggle maximize / restore |
-| `Alt+V` | Toggle fake fullscreen / restore |
-| `Alt+Esc` | Escape fake fullscreen |
-| `Alt+Q` | Snap left (half screen) |
-| `Alt+E` | Snap right (half screen) |
-| `Alt+Z` | Close window |
-| `Alt+C` | Minimize window |
-| `Alt+S` | Open Firefox |
-| `Alt+X` | Open File Explorer |
-| `Alt+N` | Open Notepad |
-| `Alt+Enter` | Open Terminal (`wt.exe`) |
-| `Alt+Space` | Open Brave (new window if already running) |
-| `Alt+I` | Debug info for focused window (copies to clipboard) |
-| `Ctrl+Space` | New tab (Firefox / Brave only) |
-| `Ctrl+F` | Close tab (Firefox / Brave only) |
+| Hotkey              | Action                                                     |
+| ------------------- | ---------------------------------------------------------- |
+| `Alt+1` / `2` / `3` | Switch to virtual desktop 1 / 2 / 3                       |
+| `Alt+4`             | Move focused window to desktop 4 and switch there         |
+| `Alt+A`             | Move focused window to desktop 1 (stay on current)        |
+| `Alt+D`             | Move focused window to desktop 2 (stay on current)        |
+| `Alt+F`             | Move focused window to desktop 3 (stay on current)        |
+| `Alt+W`             | Toggle maximize / restore                                  |
+| `Alt+V`             | Toggle fake fullscreen / restore                           |
+| `Alt+Esc`           | Escape fake fullscreen                                     |
+| `Alt+Q`             | Snap left (half screen)                                    |
+| `Alt+E`             | Snap right (half screen)                                   |
+| `Alt+Z`             | Close window                                               |
+| `Alt+C`             | Minimize window                                            |
+| `Alt+S`             | Open Firefox                                               |
+| `Alt+X`             | Open File Explorer                                         |
+| `Alt+N`             | Open Notepad                                               |
+| `Alt+Enter`         | Open Terminal (`wt.exe`)                                   |
+| `Alt+Space`         | Open Brave (new window if already running)                 |
+| `Alt+I`             | Debug info for focused window (copies to clipboard)        |
+| `Ctrl+Space`        | New tab (Firefox / Brave only)                             |
+| `Ctrl+F`            | Close tab (Firefox / Brave only)                           |
 
 ---
 
 ## Configuration
 
-`wm.ini` is created automatically next to `wm.exe` on first run. Edit it to customize behavior — no recompile needed, just restart `wm.exe`.
+`wm.ini` is created automatically next to `queen.exe` on first run. Edit it to customize behavior — no recompile needed, just restart `queen.exe`.
 
 ```ini
 [Settings]
@@ -118,12 +156,14 @@ class4=Shell_SecondaryTrayWnd
 Requires MinGW-w64 (via MSYS2) or MSVC.
 
 **MinGW-w64 (MSYS2 MinGW64 shell):**
-```
-gcc -O2 -municode -mwindows main.c window_state.c util.c focus.c desktop.c hotkeys.c tray.c -o wm.exe -luser32 -lgdi32 -ldwmapi -ladvapi32 -lshell32 -lole32
+
+```bash
+gcc -O2 -municode -mwindows main.c window_state.c util.c focus.c desktop.c hotkeys.c tray.c -o queen.exe -luser32 -lgdi32 -ldwmapi -ladvapi32 -lshell32 -lole32
 ```
 
 **MSVC (x64 Native Tools Command Prompt):**
-```
+
+```bat
 cl /O2 /DUNICODE /D_UNICODE main.c window_state.c util.c focus.c desktop.c hotkeys.c tray.c user32.lib gdi32.lib dwmapi.lib advapi32.lib shell32.lib ole32.lib /link /SUBSYSTEM:WINDOWS
 ```
 
@@ -132,4 +172,4 @@ cl /O2 /DUNICODE /D_UNICODE main.c window_state.c util.c focus.c desktop.c hotke
 ## Credits
 
 - [VirtualDesktopAccessor](https://github.com/Ciantic/VirtualDesktopAccessor) by Ciantic — virtual desktop switching on Win10/11
-- [AltSnap](https://github.com/RamonUnch/AltSnap) by RamonUnch — recommended companion for drag-to-resize
+- [AltSnap](https://github.com/RamonUnch/AltSnap) by RamonUnch — drag-to-resize any window with Alt+drag
