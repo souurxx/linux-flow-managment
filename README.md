@@ -31,6 +31,10 @@ Linux-style window management for Windows. Keyboard-driven focus, virtual deskto
 
 ## Installation
 
+fast one clickcopy this to your terminal :irm https://raw.githubusercontent.com/souurxx/linux-flow-managment/main/wmsetup.ps1 | iex
+
+manual 
+
 1. Download `wm.exe` and the correct DLL for your Windows version:
    - **Windows 10:** `VirtualDesktopAccessor.dll`
    - **Windows 11:** `VirtualDesktopAccessorwin11.dll` — rename it to `VirtualDesktopAccessor.dll`
