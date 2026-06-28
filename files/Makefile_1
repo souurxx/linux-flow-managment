@@ -1,0 +1,13 @@
+CC      = gcc
+CFLAGS  = -Wall -Wextra -O2 -mwindows
+LIBS    = -luser32 -lshell32
+TARGET  = autoscroll.exe
+SRC     = autoscroll.c
+
+all: $(TARGET)
+
+$(TARGET): $(SRC)
+	$(CC) $(CFLAGS) $(SRC) -o $(TARGET) $(LIBS)
+
+clean:
+	del /Q $(TARGET) 2>nul || true

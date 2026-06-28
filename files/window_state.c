@@ -54,8 +54,8 @@ WSNode* FindVerifiedNode(HWND h) {
 
         if (wcscmp(curClass, n->className) != 0 || wcscmp(curProc, n->processName) != 0) {
             LogMsg(L"State for hwnd 0x%p discarded: identity mismatch "
-                    L"(saved '%ls'/'%ls', now '%ls'/'%ls') — likely HWND reuse.",
-                    h, n->className, n->processName, curClass, curProc);
+                   L"(saved '%ls'/'%ls', now '%ls'/'%ls') — likely HWND reuse.",
+                   h, n->className, n->processName, curClass, curProc);
             RemoveNode(h);
             return NULL;
         }
@@ -64,16 +64,29 @@ WSNode* FindVerifiedNode(HWND h) {
     return NULL;
 }
 
+// GetOrCreateNode — find or allocate the state node for h.
+//
+// Bug #6 fix: we now call FindVerifiedNode first instead of scanning the
+// bucket blindly.  If an entry already exists for this HWND but the
+// class+process has changed (HWND reuse), FindVerifiedNode removes the stale
+// node so we allocate a fresh one with the correct identity.  Without this,
+// a recycled HWND returned a node belonging to a dead window, and any
+// geometry/style written into it was attributed to the wrong window.
 WSNode* GetOrCreateNode(HWND h) {
-    unsigned b = HashHwnd(h);
-    for (WSNode* n = g_stateTable[b]; n; n = n->next)
-        if (n->hwnd == h) return n;
+    // Try verified lookup first — handles both the normal "already exists"
+    // case and the HWND-reuse case (stale node gets dropped inside).
+    WSNode* existing = FindVerifiedNode(h);
+    if (existing) return existing;
 
+    // Either no node existed, or FindVerifiedNode just evicted a stale one.
+    // Allocate a fresh node with current identity.
     WSNode* n = (WSNode*)calloc(1, sizeof(WSNode));
     if (!n) return NULL;
     n->hwnd = h;
     GetWindowClassSafe(h, n->className, 64);
     GetWindowProcessNameSafe(h, n->processName, MAX_PATH);
+
+    unsigned b = HashHwnd(h);
     n->next = g_stateTable[b];
     g_stateTable[b] = n;
     return n;
@@ -106,24 +119,42 @@ void ClearWindowState(HWND h, BOOL allowRestore) {
 }
 
 void RestoreWindowState(HWND h) {
+    // Always show the taskbar first — even if we have no saved node (e.g.
+    // after a crash/restart where state was lost), we must not leave the
+    // taskbar hidden permanently.
     ShowTaskbarForWindow(h);
 
     WSNode* n = FindVerifiedNode(h);
     if (!n || !n->hasPos) {
-        SetWindowPos(h, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        // No saved geometry.  Promote/demote topmost based on whether the
+        // window was originally topmost (wasTopmost).  Fall back to NOTOPMOST
+        // if we have no node at all, which is the safe default for a window
+        // whose state we never recorded.
+        HWND insertAfter = (n && n->wasTopmost) ? HWND_TOPMOST : HWND_NOTOPMOST;
+        SetWindowPos(h, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         ShowWindow(h, SW_RESTORE);
         if (n) RemoveNode(h);
         return;
     }
 
-    SetWindowLongPtrW(h, GWL_STYLE, n->style);
+    // Restore original style first so the subsequent size/move uses the
+    // correct frame metrics.
+    SetWindowLongPtrW(h, GWL_STYLE,   n->style);
     SetWindowLongPtrW(h, GWL_EXSTYLE, n->exStyle);
 
-    SetWindowPos(h, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    // Bug #3 fix: restore the window to the topmost band it was in BEFORE we
+    // touched it.  The original code unconditionally used HWND_TOPMOST, which
+    // permanently promoted every restored window regardless of its original
+    // z-order.  A normal non-topmost app that went through fake-fullscreen
+    // would come back as topmost and sit on top of everything else forever.
+    HWND insertAfter = n->wasTopmost ? HWND_TOPMOST : HWND_NOTOPMOST;
+    SetWindowPos(h, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 
     if (IsIconic(h) || IsZoomed(h))
         ShowWindow(h, SW_RESTORE);
 
+    // Two-pass size restore: MoveWindow for the basic geometry, then
+    // SetWindowPos with SWP_FRAMECHANGED to flush the new style into DWM.
     MoveWindow(h, n->x, n->y, n->w, n->h, FALSE);
 
     SetWindowPos(h, NULL, n->x, n->y, n->w, n->h,

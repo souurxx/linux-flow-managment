@@ -1,3 +1,3 @@
-// Resource file — embeds wm.ico into wm.exe so it shows up in Explorer,
-// the taskbar, the Alt+Tab switcher, and the tray.
-1002 ICON "wm.ico"
+#include "resource.h"
+
+IDI_APPICON ICON "wm.ico"

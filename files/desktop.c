@@ -8,9 +8,9 @@
 typedef int (WINAPI *PFN_GoToDesktopNumber)(int);
 typedef int (WINAPI *PFN_MoveWindowToDesktopNumber)(HWND, int);
 
-HMODULE g_vdaModule = NULL;
+HMODULE g_vdaModule    = NULL;
 BOOL    g_vdaAvailable = FALSE;
-static PFN_GoToDesktopNumber         g_fnGoToDesktop = NULL;
+static PFN_GoToDesktopNumber         g_fnGoToDesktop        = NULL;
 static PFN_MoveWindowToDesktopNumber g_fnMoveWindowToDesktop = NULL;
 
 static BOOL IsWindows11OrLater(void) {
@@ -62,7 +62,7 @@ void LoadVirtualDesktopAccessor(void) {
         return;
     }
 
-    g_fnGoToDesktop = (PFN_GoToDesktopNumber)GetProcAddress(g_vdaModule, "GoToDesktopNumber");
+    g_fnGoToDesktop        = (PFN_GoToDesktopNumber)        GetProcAddress(g_vdaModule, "GoToDesktopNumber");
     g_fnMoveWindowToDesktop = (PFN_MoveWindowToDesktopNumber)GetProcAddress(g_vdaModule, "MoveWindowToDesktopNumber");
 
     if (!g_fnGoToDesktop || !g_fnMoveWindowToDesktop) {
@@ -87,7 +87,10 @@ void LoadVirtualDesktopAccessor(void) {
 // ============================================================================
 
 void GoToDesktop(int n) {
-    if (!g_vdaAvailable) { LogMsg(L"GoToDesktop(%d) skipped: VirtualDesktopAccessor.dll not loaded.", n); return; }
+    if (!g_vdaAvailable) {
+        LogMsg(L"GoToDesktop(%d) skipped: VirtualDesktopAccessor.dll not loaded.", n);
+        return;
+    }
     g_fnGoToDesktop(n);
 }
 
@@ -101,7 +104,10 @@ static HWND GetWindowUnderCursorAncestor(void) {
 }
 
 void MoveWindowToDesktop(int n, BOOL alsoGo) {
-    if (!g_vdaAvailable) { LogMsg(L"MoveWindowToDesktop(%d) skipped: DLL not loaded.", n); return; }
+    if (!g_vdaAvailable) {
+        LogMsg(L"MoveWindowToDesktop(%d) skipped: DLL not loaded.", n);
+        return;
+    }
 
     HWND h = GetWindowUnderCursorAncestor();
     if (!CanMoveToDesktop(h)) return;
@@ -122,9 +128,23 @@ void SnapTo(HWND h, BOOL left) {
 
     WSNode* n = FindVerifiedNode(h);
     if (n && n->altState == ALTWSTATE_FULLSCREEN && IsFirefoxWindow(h)) {
-        keybd_event(VK_F11, 0, 0, MARK_INJECTED);
+        // Bug #12 fix: the original code sent F11 and then immediately
+        // called MoveWindowVisibleRect after a fixed 150 ms Sleep.  On a
+        // loaded machine Firefox takes longer to process F11 and actually
+        // leave fullscreen, so the snap would run while the window was still
+        // borderless-fullscreen and land in the wrong position.
+        //
+        // Fixed approach: send F11, then poll the WS_CAPTION bit (which
+        // Firefox restores when it exits fullscreen) for up to 600 ms in
+        // 30 ms increments before proceeding.  600 ms is generous but still
+        // short enough to feel instant to the user.
+        keybd_event(VK_F11, 0, 0,               MARK_INJECTED);
         keybd_event(VK_F11, 0, KEYEVENTF_KEYUP, MARK_INJECTED);
-        Sleep(150);
+
+        for (int i = 0; i < 20; i++) {
+            Sleep(30);
+            if (GetWindowLongPtrW(h, GWL_STYLE) & WS_CAPTION) break;
+        }
     }
 
     ClearWindowState(h, FALSE);
@@ -133,7 +153,7 @@ void SnapTo(HWND h, BOOL left) {
     GetMonitorWorkAreaForWindow(h, &wa);
     LONG w = wa.right - wa.left;
 
-    LONG l = left ? wa.left : wa.left + (w / 2);
+    LONG l = left ? wa.left            : wa.left + (w / 2);
     LONG t = wa.top;
     LONG r = left ? wa.left + (w / 2) : wa.right;
     LONG b = wa.bottom;

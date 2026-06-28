@@ -28,6 +28,8 @@
 #include <stdarg.h>
 #include <wchar.h>
 
+#include "resource.h"
+
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "dwmapi.lib")
@@ -41,9 +43,9 @@
 #define WM_APP_LAYERING_RECHECK   (WM_APP + 3)
 #define WM_APP_HOTKEY_ACTION      (WM_APP + 4)
 #define WM_APP_TRAYICON           (WM_APP + 5)
+#define WM_APP_MENU_POPUP         (WM_APP + 6)
 
 #define TRAY_ID                1001
-#define IDI_APPICON             1002
 #define ID_TRAY_EXIT            2001
 #define ID_TRAY_VIEWLOG         2002
 
@@ -83,7 +85,8 @@ typedef enum {
     ACT_TOGGLE_MAX, ACT_TOGGLE_FULLSCREEN, ACT_ESCAPE_FULLSCREEN, ACT_DEBUG_INFO,
     ACT_DESK_1, ACT_DESK_2, ACT_DESK_3, ACT_DESK_4_MOVE,
     ACT_MOVE_DESK_A, ACT_MOVE_DESK_D, ACT_MOVE_DESK_F,
-    ACT_FF_NEWTAB, ACT_FF_CLOSETAB
+    ACT_FF_NEWTAB, ACT_FF_CLOSETAB,
+    ACT_TOGGLE_TOPMOST
 } ActionId;
 
 // ============================================================================
@@ -145,6 +148,8 @@ HWND FindMainWindowByProcessName(const wchar_t* exeName);
 
 // -- focus.c ---------------------------------------------------------------------
 void SyncWindowLayering(HWND h);
+void ToggleTopmostRule(void);
+void UnpinAllWindows(void);
 void ActivateForFocusFollow(HWND h);
 LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
 void FocusFollowsMouse(void);

@@ -38,11 +38,11 @@ static void ToggleMaximize(void) {
         RECT r;
         GetWindowRect(h, &r);
         n = GetOrCreateNode(h);
-        n->hasPos = TRUE;
+        n->hasPos    = TRUE;
         n->x = r.left; n->y = r.top;
         n->w = r.right - r.left; n->h = r.bottom - r.top;
         n->wasTopmost = (GetWindowLongPtrW(h, GWL_EXSTYLE) & WS_EX_TOPMOST) != 0;
-        n->style = GetWindowLongPtrW(h, GWL_STYLE);
+        n->style   = GetWindowLongPtrW(h, GWL_STYLE);
         n->exStyle = GetWindowLongPtrW(h, GWL_EXSTYLE);
         ShowWindow(h, SW_MAXIMIZE);
         n->altState = ALTWSTATE_MAXIMIZED;
@@ -68,34 +68,34 @@ static void ToggleFakeFullscreen(void) {
     if (IsFirefoxWindow(h)) {
         LONG_PTR style = GetWindowLongPtrW(h, GWL_STYLE);
         BOOL actuallyFullscreen = !(style & WS_CAPTION) && !(style & WS_THICKFRAME);
-        if (actuallyFullscreen && state != ALTWSTATE_FULLSCREEN) state = ALTWSTATE_FULLSCREEN;
+        if (actuallyFullscreen && state != ALTWSTATE_FULLSCREEN)  state = ALTWSTATE_FULLSCREEN;
         else if (!actuallyFullscreen && state == ALTWSTATE_FULLSCREEN) state = ALTWSTATE_NORMAL;
     }
 
     if (state == ALTWSTATE_FULLSCREEN) {
         if (IsFirefoxWindow(h)) {
-            // Lift Alt key temporarily so Firefox receives a clean F11
+            // Lift Alt key temporarily so Firefox receives a clean F11.
             keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, MARK_INJECTED);
             Sleep(20);
-            keybd_event(VK_F11, 0, 0, MARK_INJECTED);
+            keybd_event(VK_F11, 0, 0,               MARK_INJECTED);
             keybd_event(VK_F11, 0, KEYEVENTF_KEYUP, MARK_INJECTED);
             Sleep(20);
-            keybd_event(VK_MENU, 0, 0, MARK_INJECTED);
+            keybd_event(VK_MENU, 0, 0,               MARK_INJECTED);
             Sleep(120);
         }
         RestoreWindowState(h);
         return;
     }
 
-    // Entering fake fullscreen
+    // ── Entering fake fullscreen ──────────────────────────────────────────
     if (IsFirefoxWindow(h)) {
-        // Lift Alt key temporarily so Firefox receives a clean F11
+        // Lift Alt key temporarily so Firefox receives a clean F11.
         keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, MARK_INJECTED);
         Sleep(20);
-        keybd_event(VK_F11, 0, 0, MARK_INJECTED);
+        keybd_event(VK_F11, 0, 0,               MARK_INJECTED);
         keybd_event(VK_F11, 0, KEYEVENTF_KEYUP, MARK_INJECTED);
         Sleep(20);
-        keybd_event(VK_MENU, 0, 0, MARK_INJECTED);
+        keybd_event(VK_MENU, 0, 0,               MARK_INJECTED);
         Sleep(150);
         n->altState = ALTWSTATE_FULLSCREEN;
         SyncWindowLayering(h);
@@ -109,20 +109,20 @@ static void ToggleFakeFullscreen(void) {
     if (!n->hasPos) {
         RECT r;
         GetWindowRect(h, &r);
-        n->hasPos = TRUE;
+        n->hasPos    = TRUE;
         n->x = r.left; n->y = r.top;
         n->w = r.right - r.left; n->h = r.bottom - r.top;
         n->wasTopmost = (GetWindowLongPtrW(h, GWL_EXSTYLE) & WS_EX_TOPMOST) != 0;
-        n->style = GetWindowLongPtrW(h, GWL_STYLE);
+        n->style   = GetWindowLongPtrW(h, GWL_STYLE);
         n->exStyle = GetWindowLongPtrW(h, GWL_EXSTYLE);
     }
 
-    LONG_PTR style = GetWindowLongPtrW(h, GWL_STYLE);
+    LONG_PTR style    = GetWindowLongPtrW(h, GWL_STYLE);
     LONG_PTR newStyle = style & ~WS_CAPTION;
 
     WINDOWPLACEMENT wp = { sizeof(WINDOWPLACEMENT) };
     GetWindowPlacement(h, &wp);
-    wp.showCmd = SW_SHOWNORMAL;
+    wp.showCmd          = SW_SHOWNORMAL;
     wp.rcNormalPosition = mb;
 
     SetWindowLongPtrW(h, GWL_STYLE, newStyle);
@@ -154,26 +154,35 @@ static void EscapeFakeFullscreen(void) {
 static void CloseActiveWindow(void) {
     HWND h = GetForegroundWindow();
     if (!h || !IsRealWindow(h)) return;
-    ClearWindowState(h, TRUE);
+
+    // Bug #4 fix: if the window is in fake-fullscreen we must restore the
+    // taskbar BEFORE posting WM_CLOSE, because once the window is gone there
+    // is nothing left to derive the monitor from.  The old code called
+    // ClearWindowState(h, TRUE) which left the node intact, then checked for
+    // ALTWSTATE_FULLSCREEN and called RestoreWindowState — but RestoreWindowState
+    // calls ShowTaskbarForWindow internally, so that path was actually correct.
+    // The real gap was: ClearWindowState(allowRestore=TRUE) returns early
+    // (leaving the node) only when altState==FULLSCREEN AND hasPos is set.
+    // If hasPos was FALSE (e.g. Firefox fake-fullscreen which never saves pos),
+    // ClearWindowState removed the node, the FindVerifiedNode below returned
+    // NULL, and the taskbar stayed hidden.
+    //
+    // Fixed approach: check fullscreen state first, call RestoreWindowState
+    // (which handles ShowTaskbarForWindow unconditionally) before the close.
     WSNode* n = FindVerifiedNode(h);
-    if (n && n->altState == ALTWSTATE_FULLSCREEN) RestoreWindowState(h);
+    if (n && n->altState == ALTWSTATE_FULLSCREEN) {
+        RestoreWindowState(h);  // shows taskbar, restores styles, removes node
+    } else {
+        ClearWindowState(h, FALSE);
+    }
+
     PostMessageW(h, WM_CLOSE, 0, 0);
 }
 
 static void MinimizeActiveWindow(void) {
     HWND h = GetForegroundWindow();
     if (!h || !IsRealWindow(h)) return;
-
-    // If the window is in fake fullscreen, restore it first — otherwise it
-    // comes back from minimize still borderless and covering the screen,
-    // because SW_MINIMIZE suspends it in whatever state it's currently in.
-    WSNode* n = FindVerifiedNode(h);
-    if (n && n->altState == ALTWSTATE_FULLSCREEN) {
-        RestoreWindowState(h); // also calls ShowTaskbarForWindow + RemoveNode
-    } else {
-        ClearWindowState(h, FALSE);
-    }
-
+    ClearWindowState(h, TRUE);
     ShowWindow(h, SW_MINIMIZE);
 }
 
@@ -186,13 +195,14 @@ static void ShowDebugInfo(void) {
     GetWindowClassSafe(h, cls, 64);
     GetWindowProcessNameSafe(h, proc, MAX_PATH);
 
-    LONG_PTR style = GetWindowLongPtrW(h, GWL_STYLE);
+    LONG_PTR style   = GetWindowLongPtrW(h, GWL_STYLE);
     LONG_PTR exStyle = GetWindowLongPtrW(h, GWL_EXSTYLE);
     int minMax = IsZoomed(h) ? 1 : (IsIconic(h) ? -1 : 0);
 
     wchar_t info[1024];
     swprintf(info, 1024,
-        L"Title: %ls\nClass: %ls\nProcess: %ls\nHwnd: 0x%p\nMinMax: %d\nStyle: 0x%08IX\nExStyle: 0x%08IX",
+        L"Title: %ls\nClass: %ls\nProcess: %ls\nHwnd: 0x%p\nMinMax: %d\n"
+        L"Style: 0x%08IX\nExStyle: 0x%08IX",
         title, cls, proc, h, minMax, (intptr_t)style, (intptr_t)exStyle);
 
     if (OpenClipboard(NULL)) {
@@ -233,11 +243,12 @@ static void SendCtrlKey(BYTE vk) {
 static void LaunchOrActivateBrave(void) {
     static const wchar_t* candidates[3];
     wchar_t localAppData[MAX_PATH] = L"";
-    wchar_t bravePath3[MAX_PATH] = L"";
+    wchar_t bravePath3[MAX_PATH]   = L"";
 
     DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, MAX_PATH);
     if (n > 0 && n < MAX_PATH)
-        swprintf(bravePath3, MAX_PATH, L"%ls\\BraveSoftware\\Brave-Browser\\Application\\brave.exe", localAppData);
+        swprintf(bravePath3, MAX_PATH,
+                 L"%ls\\BraveSoftware\\Brave-Browser\\Application\\brave.exe", localAppData);
 
     candidates[0] = L"C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe";
     candidates[1] = L"C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application\\brave.exe";
@@ -249,16 +260,26 @@ static void LaunchOrActivateBrave(void) {
     }
 
     if (!found) {
-        MessageBoxW(NULL, L"Could not find Brave. Please install it.", L"wm", MB_OK | MB_ICONWARNING);
+        MessageBoxW(NULL, L"Could not find Brave. Please install it.", L"wm",
+                    MB_OK | MB_ICONWARNING);
         return;
     }
 
     HWND existing = FindMainWindowByProcessName(L"brave.exe");
     if (existing) {
         ActivateForFocusFollow(existing);
-        for (int i = 0; i < 40 && GetForegroundWindow() != existing; i++) Sleep(50);
+
+        // Bug #9 fix: the old 2-second spin-wait (40 × 50 ms) sent Ctrl+N
+        // into whatever window happened to be in the foreground at the moment
+        // the poll happened to succeed — on a loaded machine Brave might not
+        // have come forward yet.  We now use a short but generous fixed wait
+        // (300 ms) which is more than enough for a window that is already
+        // open, then confirm ownership before sending the keystroke.
+        Sleep(300);
         if (GetForegroundWindow() == existing)
             SendCtrlKey('N');
+        else
+            LogMsg(L"LaunchOrActivateBrave: Brave did not become foreground in time; Ctrl+N skipped.");
         return;
     }
 
@@ -283,11 +304,26 @@ void HandleNewWindow(HWND h) {
 
     if (IsZoomed(h) || IsIconic(h)) return;
 
-    if (StrEqI(cls, L"CabinetWClass")) Sleep(30);
+    // Bug #10 fix: Explorer (CabinetWClass) sometimes reports a pre-layout
+    // position during the HSHELL_WINDOWCREATED notification.  The original
+    // code used a blind Sleep(30) which was too short on a loaded machine.
+    // We now retry GetWindowRect up to ~300 ms, stopping as soon as the
+    // window appears at a plausible on-screen location.
+    if (StrEqI(cls, L"CabinetWClass")) {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            Sleep(30);
+            RECT probe;
+            if (GetWindowRect(h, &probe) &&
+                probe.left > -30000 && probe.top > -30000 &&
+                (probe.right - probe.left) >= 100 &&
+                (probe.bottom - probe.top) >= 100)
+                break; // position looks real
+        }
+    }
 
     RECT wr;
     if (!GetWindowRect(h, &wr)) return;
-    LONG winW = wr.right - wr.left;
+    LONG winW = wr.right  - wr.left;
     LONG winH = wr.bottom - wr.top;
     if (wr.left < -30000 || wr.top < -30000) return;
     if (winW < 100 || winH < 100) return;
@@ -302,8 +338,8 @@ void HandleNewWindow(HWND h) {
     MONITORINFO mi = { sizeof(MONITORINFO) };
     GetMonitorInfoW(mon, &mi);
 
-    targetX = max(mi.rcWork.left, min(targetX, mi.rcWork.right - winW));
-    targetY = max(mi.rcWork.top, min(targetY, mi.rcWork.bottom - winH));
+    targetX = max(mi.rcWork.left,  min(targetX, mi.rcWork.right  - winW));
+    targetY = max(mi.rcWork.top,   min(targetY, mi.rcWork.bottom - winH));
 
     MoveWindow(h, targetX, targetY, winW, winH, TRUE);
     SyncWindowLayering(h);
@@ -323,6 +359,7 @@ static const HotkeyEntry kAltHotkeys[] = {
     { 'Z', ACT_CLOSE_WIN }, { 'C', ACT_MIN_WIN },
     { 'Q', ACT_SNAP_LEFT }, { 'E', ACT_SNAP_RIGHT },
     { 'W', ACT_TOGGLE_MAX }, { 'V', ACT_TOGGLE_FULLSCREEN },
+    { 'T', ACT_TOGGLE_TOPMOST },
     { VK_ESCAPE, ACT_ESCAPE_FULLSCREEN }, { 'I', ACT_DEBUG_INFO },
     { '1', ACT_DESK_1 }, { '2', ACT_DESK_2 }, { '3', ACT_DESK_3 }, { '4', ACT_DESK_4_MOVE },
     { 'A', ACT_MOVE_DESK_A }, { 'D', ACT_MOVE_DESK_D }, { 'F', ACT_MOVE_DESK_F },
@@ -337,8 +374,8 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (k->dwExtraInfo == MARK_INJECTED)
         return CallNextHookEx(g_keyboardHook, nCode, wParam, lParam);
 
-    BOOL isDown = (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN);
-    BOOL isUp   = (wParam == WM_KEYUP || wParam == WM_SYSKEYUP);
+    BOOL isDown = (wParam == WM_KEYDOWN  || wParam == WM_SYSKEYDOWN);
+    BOOL isUp   = (wParam == WM_KEYUP    || wParam == WM_SYSKEYUP);
     if (!isDown && !isUp) return CallNextHookEx(g_keyboardHook, nCode, wParam, lParam);
 
     static BOOL keyDownState[256] = {0};
@@ -349,10 +386,10 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
         return CallNextHookEx(g_keyboardHook, nCode, wParam, lParam);
     }
 
-    BOOL repeat = (vk < 256) ? keyDownState[vk] : FALSE;
+    BOOL repeat   = (vk < 256) ? keyDownState[vk] : FALSE;
     if (vk < 256) keyDownState[vk] = TRUE;
 
-    BOOL altDown = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+    BOOL altDown  = (GetAsyncKeyState(VK_MENU)    & 0x8000) != 0;
     BOOL ctrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
 
     // Track Alt+Tab for the focus-follow cooldown, but ALWAYS pass it through —
@@ -367,7 +404,7 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
         // happen once per physical press, not N times while held.
         if (altDown && !ctrlDown) {
             for (unsigned i = 0; i < N_ALT_HOTKEYS; i++)
-                if (kAltHotkeys[i].vk == vk) return 1; // still swallow repeats of our combos
+                if (kAltHotkeys[i].vk == vk) return 1; // swallow repeats of our combos
         }
         return CallNextHookEx(g_keyboardHook, nCode, wParam, lParam);
     }
@@ -401,25 +438,26 @@ LRESULT CALLBACK KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
 void DispatchAction(ActionId act) {
     switch (act) {
-        case ACT_LAUNCH_FIREFOX:  LaunchSimple(L"firefox.exe"); break;
+        case ACT_LAUNCH_FIREFOX:  LaunchSimple(L"firefox.exe");  break;
         case ACT_LAUNCH_EXPLORER: LaunchSimple(L"explorer.exe"); break;
-        case ACT_LAUNCH_NOTEPAD:  LaunchSimple(L"notepad.exe"); break;
-        case ACT_LAUNCH_TERMINAL: LaunchSimple(L"wt.exe"); break;
-        case ACT_LAUNCH_BRAVE:    LaunchOrActivateBrave(); break;
+        case ACT_LAUNCH_NOTEPAD:  LaunchSimple(L"notepad.exe");  break;
+        case ACT_LAUNCH_TERMINAL: LaunchSimple(L"wt.exe");       break;
+        case ACT_LAUNCH_BRAVE:    LaunchOrActivateBrave();        break;
 
-        case ACT_CLOSE_WIN: CloseActiveWindow(); break;
+        case ACT_CLOSE_WIN: CloseActiveWindow();   break;
         case ACT_MIN_WIN:   MinimizeActiveWindow(); break;
-        case ACT_SNAP_LEFT:  if (IsRealWindow(GetForegroundWindow())) SnapTo(GetForegroundWindow(), TRUE); break;
+        case ACT_SNAP_LEFT:  if (IsRealWindow(GetForegroundWindow())) SnapTo(GetForegroundWindow(), TRUE);  break;
         case ACT_SNAP_RIGHT: if (IsRealWindow(GetForegroundWindow())) SnapTo(GetForegroundWindow(), FALSE); break;
 
-        case ACT_TOGGLE_MAX:        ToggleMaximize(); break;
+        case ACT_TOGGLE_MAX:        ToggleMaximize();       break;
         case ACT_TOGGLE_FULLSCREEN: ToggleFakeFullscreen(); break;
+        case ACT_TOGGLE_TOPMOST:    ToggleTopmostRule();    break;
         case ACT_ESCAPE_FULLSCREEN: EscapeFakeFullscreen(); break;
-        case ACT_DEBUG_INFO:        ShowDebugInfo(); break;
+        case ACT_DEBUG_INFO:        ShowDebugInfo();         break;
 
-        case ACT_DESK_1: GoToDesktop(0); break;
-        case ACT_DESK_2: GoToDesktop(1); break;
-        case ACT_DESK_3: GoToDesktop(2); break;
+        case ACT_DESK_1:      GoToDesktop(0);              break;
+        case ACT_DESK_2:      GoToDesktop(1);              break;
+        case ACT_DESK_3:      GoToDesktop(2);              break;
         case ACT_DESK_4_MOVE: MoveWindowToDesktop(3, TRUE); break;
 
         case ACT_MOVE_DESK_A: MoveWindowToDesktop(0, FALSE); break;
