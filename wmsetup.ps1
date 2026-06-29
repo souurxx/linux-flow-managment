@@ -1,83 +1,80 @@
-# wm installer — linux-flow-managment
-# Run as Administrator:
-#   irm https://raw.githubusercontent.com/souurxx/linux-flow-managment/main/wmsetup.ps1 | iex
+# ── setup.ps1 ─────────────────────────────────────────────────────────────────
+# Downloads and sets up linux-flow-mangment + AltSnap
+# Run as Administrator
+# ─────────────────────────────────────────────────────────────────────────────
 
 $ErrorActionPreference = "Stop"
 
-$repo    = "https://raw.githubusercontent.com/souurxx/linux-flow-managment/main"
 $installDir = "$env:USERPROFILE\Documents\linux-flow-mangment"
+$startupDir = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"
+$tempDir    = "$env:TEMP\lfm_setup"
+
+New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+New-Item -ItemType Directory -Force -Path $tempDir    | Out-Null
 
 Write-Host ""
-Write-Host "  wm — window manager installer" -ForegroundColor Cyan
-Write-Host "  Installing to: $installDir" -ForegroundColor Gray
+Write-Host "═══════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host " linux-flow-mangment Setup"                  -ForegroundColor Cyan
+Write-Host "═══════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host ""
 
-# ── Create install folder ────────────────────────────────────────────────
-if (-not (Test-Path $installDir)) {
-    New-Item -ItemType Directory -Path $installDir | Out-Null
-}
+# ── 1. Download klien.exe ─────────────────────────────────────────────────────
+Write-Host "[1/3] Downloading klien.exe..." -ForegroundColor Yellow
+curl.exe -L "https://github.com/souurxx/linux-flow-mangment/raw/main/klien.exe" -o "$installDir\klien.exe"
+Write-Host " klien.exe saved." -ForegroundColor Green
 
-# ── Detect Windows version and pick the right DLL ───────────────────────
-$build = [System.Environment]::OSVersion.Version.Build
-if ($build -ge 22000) {
-    $dllSrc  = "$repo/VirtualDesktopAccessorwin11.dll"
-    $winVer  = "Windows 11"
+# ── 2. Download VirtualDesktopAccessor.dll ────────────────────────────────────
+Write-Host "[2/3] Downloading VirtualDesktopAccessor.dll..." -ForegroundColor Yellow
+$winBuild = [System.Environment]::OSVersion.Version.Build
+if ($winBuild -lt 22000) {
+    # Windows 10
+    curl.exe -L "https://github.com/souurxx/linux-flow-mangment/raw/main/VirtualDesktopAccessor.dll" -o "$installDir\VirtualDesktopAccessor.dll"
 } else {
-    $dllSrc  = "$repo/VirtualDesktopAccessor.dll"
-    $winVer  = "Windows 10"
+    # Windows 11
+    curl.exe -L "https://github.com/souurxx/linux-flow-mangment/raw/main/VirtualDesktopAccessor_Win11.dll" -o "$installDir\VirtualDesktopAccessor.dll"
+}
+Write-Host " DLL saved." -ForegroundColor Green
+
+# ── 3. Install AltSnap ────────────────────────────────────────────────────────
+Write-Host "[3/3] Downloading and installing AltSnap..." -ForegroundColor Yellow
+curl.exe -L "https://github.com/RamonUnch/AltSnap/releases/download/1.67/AltSnap1.67-x64-inst.exe" -o "$tempDir\AltSnap_setup.exe"
+Start-Process "$tempDir\AltSnap_setup.exe" -ArgumentList "/S" -Wait
+Write-Host " AltSnap installed." -ForegroundColor Green
+
+# ── Add klien.exe to startup ──────────────────────────────────────────────────
+Write-Host "Setting up autostart..." -ForegroundColor Yellow
+$WshShell = New-Object -ComObject WScript.Shell
+$shortcut = $WshShell.CreateShortcut("$startupDir\linux-flow-mangment.lnk")
+$shortcut.TargetPath     = "$installDir\klien.exe"
+$shortcut.WorkingDirectory = $installDir
+$shortcut.Save()
+Write-Host " Autostart set." -ForegroundColor Green
+
+# ── Add AltSnap to startup ────────────────────────────────────────────────────
+$altSnapExe = "$env:APPDATA\AltSnap\AltSnap.exe"
+if (!(Test-Path $altSnapExe)) { $altSnapExe = "$env:ProgramFiles\AltSnap\AltSnap.exe" }
+if (!(Test-Path $altSnapExe)) { $altSnapExe = "$env:LOCALAPPDATA\Programs\AltSnap\AltSnap.exe" }
+
+if (Test-Path $altSnapExe) {
+    $adShortcut = $WshShell.CreateShortcut("$startupDir\AltSnap.lnk")
+    $adShortcut.TargetPath = $altSnapExe
+    $adShortcut.Save()
+    Write-Host " AltSnap autostart set." -ForegroundColor Green
+} else {
+    Write-Host " AltSnap.exe not found — add it to startup manually." -ForegroundColor Red
 }
 
-Write-Host "  Detected: $winVer (build $build)" -ForegroundColor Gray
+# ── Launch both now ───────────────────────────────────────────────────────────
+Write-Host ""
+Write-Host "Launching..." -ForegroundColor Cyan
+if (Test-Path $altSnapExe) { Start-Process $altSnapExe }
+Start-Process "$installDir\klien.exe"
 
-# ── Download files ───────────────────────────────────────────────────────
-$files = @(
-    @{ Url = "$repo/queen.exe";  Dest = "$installDir\queen.exe";                  Label = "queen.exe" },
-    @{ Url = $dllSrc;            Dest = "$installDir\VirtualDesktopAccessor.dll"; Label = "VirtualDesktopAccessor.dll" },
-    @{ Url = "$repo/wm.ico";     Dest = "$installDir\wm.ico";                     Label = "wm.ico" }
-)
-
-foreach ($f in $files) {
-    Write-Host "  Downloading $($f.Label)..." -ForegroundColor Yellow
-    try {
-        Invoke-WebRequest -Uri $f.Url -OutFile $f.Dest -UseBasicParsing
-        Write-Host "  OK" -ForegroundColor Green
-    } catch {
-        Write-Host "  FAILED: $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host "  Download it manually from: $($f.Url)" -ForegroundColor Gray
-    }
-}
-
-# ── Add to startup (current user, no UAC prompt on login) ───────────────
-$startupDir = [System.Environment]::GetFolderPath("Startup")
-$shortcutPath = "$startupDir\wm.lnk"
+# ── Cleanup ───────────────────────────────────────────────────────────────────
+Remove-Item $tempDir -Recurse -Force
 
 Write-Host ""
-Write-Host "  Adding to startup..." -ForegroundColor Yellow
-
-try {
-    $shell    = New-Object -ComObject WScript.Shell
-    $shortcut = $shell.CreateShortcut($shortcutPath)
-    $shortcut.TargetPath       = "$installDir\queen.exe"
-    $shortcut.WorkingDirectory = $installDir
-    $shortcut.Description      = "wm window manager"
-    $shortcut.Save()
-    Write-Host "  Startup shortcut created" -ForegroundColor Green
-} catch {
-    Write-Host "  Could not create startup shortcut: $($_.Exception.Message)" -ForegroundColor Red
-}
-
-# ── Launch ───────────────────────────────────────────────────────────────
-Write-Host ""
-Write-Host "  Launching queen.exe..." -ForegroundColor Yellow
-
-try {
-    Start-Process -FilePath "$installDir\queen.exe" -Verb RunAs
-    Write-Host "  Launched (UAC prompt may appear)" -ForegroundColor Green
-} catch {
-    Write-Host "  Could not launch automatically. Run $installDir\queen.exe manually." -ForegroundColor Red
-}
-
-Write-Host ""
-Write-Host "  Done. queen.exe will launch automatically on next login." -ForegroundColor Cyan
-Write-Host "  Install folder: $installDir" -ForegroundColor Gray
+Write-Host "═══════════════════════════════════════════" -ForegroundColor Green
+Write-Host " All done! Everything is running."          -ForegroundColor Green
+Write-Host "═══════════════════════════════════════════" -ForegroundColor Green
 Write-Host ""
